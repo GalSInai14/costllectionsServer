@@ -11,8 +11,8 @@ app.use(express.urlencoded({ extended: true }));
 
 const port = process.env.PORT;
 
-app.use("/api/users", require("./routes/userRoute"));
-app.use("/api/expenses", require("./routes/expenseRoute"));
+// app.use("/", require("./routes/userRoute"));
+app.use("/", require("./routes/expenseRoute"));
 app.get("/about", (req, res) => {
   const developers = [
     {

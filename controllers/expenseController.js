@@ -1,3 +1,4 @@
+const Category = require("../models/categoryModel");
 const Expense = require("../models/expenseModel");
 const User = require("../models/userModel");
 
@@ -5,7 +6,8 @@ const User = require("../models/userModel");
 // @route  /addcost
 // @access Private
 const addExpense = async (req, res) => {
-  const { id, sum, category, day, month, year, description } = req.body;
+  const { id, sum, category, day, month, year, description, user_id } =
+    req.body;
   // Validation
   if (!id || !sum || !category || !month || !year || !day || !description) {
     res.status(400);
@@ -18,8 +20,11 @@ const addExpense = async (req, res) => {
   const expense = await Expense.create({
     id,
     sum,
-    user_id: currentUser[0].id,
-    category,
+    // user_id: currentUser[0].id,
+    user_id,
+    category: new Category({
+      name: category,
+    }),
     day,
     month,
     year,
@@ -44,24 +49,34 @@ const addExpense = async (req, res) => {
 };
 
 // @desc   Get all current user's expenses for a specific month and a year
-// @route  /report/all-expenses
-// @access Private
+// @route  /report
+// @access Public
 const getAllExpenses = async (req, res) => {
-  const { month, year } = req.body;
-  const currentUser = await User.find({ id: req.user.id });
+  // const { month, year, user_id } = req.body;
+
+  const year = req.query.year;
+  const month = req.query.month;
+  const currentUser = await User.find({ id: req.query.id * 1 });
 
   try {
     const docs = await Expense.find({
       month: month,
       year: year,
-      user_id: currentUser[0].id,
+      user_id: currentUser[0]?.id,
     });
+
+    if (!currentUser[0]) {
+      res.status(404).json({
+        status: "There is no such user.",
+      });
+      return;
+    }
 
     if (docs.length === 0) {
       res.status(404).json({
         status: "There are no expenses in this account.",
       });
-      throw new Error("There are no expenses in this account.");
+      return;
     }
 
     res.status(200).json({
@@ -74,85 +89,11 @@ const getAllExpenses = async (req, res) => {
     });
   } catch (error) {
     res.status(400);
-    throw new Error("Could not get all expenses");
-  }
-};
-
-// @desc   Get current user's expenses for a specific month during the current year
-// @route  /report/month
-// @access Private
-const getMonthlyExpenses = async (req, res) => {
-  const { month } = req.body;
-  const currentUser = await User.find({ id: req.user.id });
-  const todaysDate = new Date();
-
-  try {
-    const docs = await Expense.find({
-      month: month,
-      year: todaysDate.getFullYear(),
-      user_id: currentUser[0].id,
-    });
-
-    if (docs.length === 0) {
-      res.status(404).json({
-        status: `This account have no expenses in this month (${month}).`,
-      });
-      throw new Error(
-        `This account have no expenses in this month (${month}).`
-      );
-    }
-
-    res.status(200).json({
-      status: "success",
-      requestedAt: req.requestTime,
-      results: docs.length,
-      data: {
-        data: docs,
-      },
-    });
-  } catch (error) {
-    res.status(400);
-    throw new Error("Could not get monthly expenses");
-  }
-};
-
-// @desc   Get all current user's expenses for a specific year
-// @route  /report/year
-// @access Private
-const getYearlyExpenses = async (req, res) => {
-  const { year } = req.body;
-  const currentUser = await User.find({ id: req.user.id });
-
-  try {
-    const docs = await Expense.find({
-      year: year,
-      user_id: currentUser[0].id,
-    });
-
-    if (docs.length === 0) {
-      res.status(404).json({
-        status: "There are no expenses in this account in that year.",
-      });
-      throw new Error("There are no expenses in this account in that year.");
-    }
-
-    res.status(200).json({
-      status: "success",
-      requestedAt: req.requestTime,
-      results: docs.length,
-      data: {
-        data: docs,
-      },
-    });
-  } catch (error) {
-    res.status(400);
-    throw new Error("Could not get that year's expenses");
+    throw new Error(error);
   }
 };
 
 module.exports = {
   addExpense,
   getAllExpenses,
-  getMonthlyExpenses,
-  getYearlyExpenses,
 };
